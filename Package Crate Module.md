@@ -30,7 +30,7 @@ Rust 的代码组织。代码组织主要包括：
 
 - Rust 编译器从这里开始，组成你的 Crate 的根 Module
 
-一个 **Package**：
+一个 **Package**：一个项目就是一个 Package
 
 - 包含1个 Cargo.toml，它描述了如何构建这些 Crates
 
@@ -44,13 +44,13 @@ Rust 的代码组织。代码组织主要包括：
 
 1. **src/main.rs**：
 
-- binary crate 的 crate root
+- binary crate 的 crate root （也即入口文件）
 - crate 名与 package 名相同
 
 2. **src/lib.rs**：
 
 - package 包含一个 library crate
-- library crate 的 crate root
+- library crate 的 crate root（也即入口文件）
 - crate 名与 package 名相同
 
 3. Cargo 把 crate root 文件交给 rustc 来构建 library 或 binary
@@ -121,13 +121,30 @@ src/main.rs 和 src/lib.rs 叫做crate roots
 
 路径至少由一个标识符组成，标识符之间使用 `::`
 
+```rust
+mod front_of_house {
+    mod hosting {
+        fn add_to_waitlist() {}
+    }
+}
+
+pub fn eat_at_restaurant() {
+    // Absolute path
+    crate::front_of_house::hosting::add_to_waitlist();
+
+    // Relative path
+    front_of_house::hosting::add_to_waitlist();
+}
+
+```
+
 ### 私有边界（privacy boundary）
 
 模块不仅可以组织代码，还可以定义私有边界
 
 如果想把函数或 struct 等设为私有，可以将它放到某个模块中
 
-Rust 中所有的条目（函数，方法，struct，enum，模块，常量）默认是私有的
+Rust 中所有的条目（函数，方法，struct，enum，模块，常量）**默认是私有的**
 
 父级模块无法访问子模块中的私有条目
 
@@ -139,11 +156,11 @@ Rust 中所有的条目（函数，方法，struct，enum，模块，常量）�
 
 ```rust
 mod front_of_house {
-    pub mod hosting {
-        pub fn add_to_wait_list() {}
-        fn seat_at_table() {}
+    pub mod hosting { // 对外暴露为公有
+        pub fn add_to_wait_list() {} // 对外暴露为公有
+        fn seat_at_table() {} // 这是私有的
     }
-    mod serving {
+    mod serving { // 这是私有的子模块
         fn take_order() {}
         fn serve_order() {}
         fn take_payment() {}
@@ -166,8 +183,8 @@ fn serve_order() {0}
 mod back_of_house {
     fn fix_incorrect_order() {
         cook_order();
-        super::serve_order();
-        crate::serve_order();
+        super::serve_order(); // super::可以访问父级目录中的条目
+        crate::serve_order(); // 绝对路径的形式
     }
     fn cook_order() {}
 }
@@ -205,7 +222,7 @@ mod back_of_house {
 ```
 
 - enum是公共的
-- enum的变体**也都是公共的**
+- 注意：enum的变体默认**也都是公共的**
 
 ## use 关键字
 
@@ -220,7 +237,7 @@ mod front_of_house {
     }
 }
 
-use::crate::front_of_house::hosting;
+use::crate::front_of_house::hosting; // hosting只能访问共有的条目
 
 pub fn eat_at_restaurant() {
     hosting::add_to_waitlist();
@@ -236,12 +253,12 @@ use::front_of_house::hosting;
 
 ### use 的习惯用法
 
-- 函数：将函数的父级模块引入作用域（指定到父级）
+- 函数：将**函数的父级模块**引入作用域（函数指定到父级）
 
-- struct，enum，其它：指定完整路径（指定到本身）
+- struct，enum，其它：指定完整路径（结构体和枚举指定到本身）
 
 ```rust
-use std::collections::HashMap;
+use std::collections::HashMap; // 结构体指定到本身
 
 fn main() {
     let mut map = HashMap::new();
@@ -250,7 +267,7 @@ fn main() {
 }
 ```
 
-- 同名条目：指定到父级
+- 同名条目：指定到父级（显然只有这样才能区分）
 
 ```rust
 use std::io;
@@ -285,7 +302,7 @@ fn f2() -> IoResult {}
 
 1. Cargo.toml 添加依赖的包（package）
 
-2. use 将特定条目引入作用域
+2. **use 将特定条目引入作用域**
 
 3. 标准库（std）也被当做外部包
 
@@ -307,13 +324,17 @@ use std::{cmp::Ordering, io};
 
 // 特殊情况
 use std::io;
-use std::io::Write;
-use std::{self, Write};
+use std::io::Write; // 简写如下
+use std::io::{self, Write};
 ```
 
 ### 通配符 *
 
 使用 * 可以把路径中所有的公共条目都引入到作用域
+
+```rust
+use std::collections::*;
+```
 
 注意：谨慎使用
 
